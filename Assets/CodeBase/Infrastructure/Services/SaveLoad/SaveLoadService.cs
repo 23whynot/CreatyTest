@@ -5,20 +5,25 @@ namespace CodeBase.Infrastructure.Services.SaveLoad
 {
     public class SaveLoadService : ISaveLoadService
     {
-        private string _savePath = Path.Combine(Application.persistentDataPath, "textureData.json");
+        private readonly string _savePath = Path.Combine(Application.persistentDataPath, "texture.png");
 
-        public void SaveData(string jsonData)
+        public void Save(Texture2D texture)
         {
-            File.WriteAllText(_savePath, jsonData);
+            if (texture != null)
+                File.WriteAllBytes(_savePath, texture.EncodeToPNG());
         }
-        
 
-        public string LoadData()
+        public Texture2D Load(Texture2D texture)
         {
             if (File.Exists(_savePath))
-                return File.ReadAllText(_savePath);
-            
-            return null;
+            {
+                byte[] imageData = File.ReadAllBytes(_savePath);
+                if (texture == null)
+                    texture = new Texture2D(2, 2);
+                texture.LoadImage(imageData);
+                texture.Apply();
+            }
+            return texture;
         }
     }
 }

@@ -1,4 +1,4 @@
-namespace CodeBase.Controllers.SaveLoadController
+namespace CodeBase.Infrastructure.Services.SaveLoad.SaveLoadController
 {
     public interface ISaveLoadController
     {

@@ -1,9 +1,10 @@
 using CodeBase.Controllers.BrushSizeSystem;
 using CodeBase.Controllers.ColorSystem;
-using CodeBase.Controllers.SaveLoadController;
 using CodeBase.Infrastructure;
 using CodeBase.Infrastructure.Services.Input;
 using CodeBase.Infrastructure.Services.SaveLoad;
+using CodeBase.Infrastructure.Services.SaveLoad.SaveLoadController;
+using CodeBase.Object;
 using Zenject;
 using UnityEngine;
 
@@ -16,11 +17,13 @@ namespace CodeBase.Zenject
             Container.BindInterfacesAndSelfTo<ColorController>().AsSingle();
             Container.BindInterfacesAndSelfTo<BrushSizeController>().AsSingle();
             Container.BindInterfacesAndSelfTo<SaveLoadController>().AsSingle();
+            Container.Bind<ISavedTexture>().To<Paint>().FromComponentInHierarchy().AsSingle();
             Container.Bind<ISaveLoadService>().To<SaveLoadService>().AsSingle();
             Container.Bind<IInputService>().FromMethod(GetInputService).AsSingle();
+            Container.Bind<IPaintBrush>().To<PaintBrush>().AsSingle();
         }
 
-        private IInputService GetInputService()
+        private IInputService GetInputService(InjectContext context)
         {
             if (Application.isEditor)
                 return new StandaloneInputService();

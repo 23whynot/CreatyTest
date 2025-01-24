@@ -1,7 +1,6 @@
-﻿using CodeBase.Infrastructure.Services.Input;
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace CodeBase.Infrastructure
+namespace CodeBase.Infrastructure.Services.Input
 {
     public class MobileInputService : InputService
     {

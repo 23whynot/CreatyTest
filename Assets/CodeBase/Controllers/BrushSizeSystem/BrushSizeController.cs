@@ -1,15 +1,21 @@
-using System;
+using CodeBase.Object;
+using Zenject;
 
 namespace CodeBase.Controllers.BrushSizeSystem
 {
-    public class BrushSizeController : IBrushSizeEvent, IBrushSizeController
+    public class BrushSizeController :  IBrushSizeController
     {
-        public event Action<int> OnBrushSizeChanged;
+        IPaintBrush _paintBrush;
 
-
+        [Inject]
+        public void Construct(IPaintBrush paintBrush)
+        {
+            _paintBrush = paintBrush;
+        }
+        
         public void SetBrushSize(int brushSize)
         {
-            OnBrushSizeChanged?.Invoke(brushSize);
+            _paintBrush.SetBrushSize(brushSize);
         }
     }
 }

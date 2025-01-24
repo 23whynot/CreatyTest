@@ -1,148 +1,151 @@
+using CodeBase.Controllers.BrushSizeSystem;
+using CodeBase.Controllers.ColorSystem;
+using CodeBase.Controllers.SaveLoadController;
+using CodeBase.Infrastructure.Services.Input;
+using CodeBase.Infrastructure.Services.SaveLoad;
 using UnityEngine;
-using System.IO;
-using System.Collections.Generic;
+using Zenject;
 
-public class Paint3D : MonoBehaviour
+namespace CodeBase.Object
 {
-    [SerializeField] private int _textureSize = 512;
-    [SerializeField] private Color _brushColor = Color.red;
-    [SerializeField] private int _brushSize = 8;
-    [SerializeField] private MeshRenderer _meshRenderer;
-
-    private Camera _camera;
-    private Texture2D _texture;
-    private int _lastRayX, _lastRayY;
-    private string _savePath;
-
-    private void Awake()
+    public class Paint : MonoBehaviour
     {
-        _camera = Camera.main;
-        _savePath = Path.Combine(Application.persistentDataPath, "textureData.json");
+        [SerializeField] private MeshRenderer meshRenderer;
+    
+        private Color _brushColor;
+        private Camera _camera;
+        private Texture2D _texture;
+        private int _textureSize = 512;
+        private int _lastRayX, _lastRayY;
+        private int _brushSize = 8;
+    
+        private IInputService _inputService;
+        private ISaveLoadService _saveLoadService;
+        private IColorChangeEvent _colorChangeEvent;
+        private IBrushSizeEvent _brushSizeEvent;
+        private ISaveLoadEvent _saveLoadEvent;
 
-        InitializeTexture();
-    }
-
-    private void Update()
-    {
-        HandleBrushSizeAdjustment();
-        HandlePainting();
-        HandleTextureSave();
-    }
-
-    private void HandleBrushSizeAdjustment()
-    {
-        _brushSize = Mathf.Max(1, _brushSize + (int)Input.mouseScrollDelta.y);
-    }
-
-    private void HandlePainting()
-    {
-        if (Input.GetMouseButton(0))
+        [Inject]
+        public void Construct(IColorChangeEvent colorChangeEvent, 
+            IBrushSizeEvent brushSizeEvent, 
+            IInputService inputService, 
+            ISaveLoadService saveLoadService, 
+            ISaveLoadEvent saveLoadEvent)
         {
-            if (TryGetUVCoordinates(out int pixelX, out int pixelY))
-            {
-                if (_lastRayX != pixelX || _lastRayY != pixelY)
-                {
-                    DrawCircle(pixelX, pixelY);
-                    _lastRayX = pixelX;
-                    _lastRayY = pixelY;
-                }
+            _inputService = inputService;
+            _colorChangeEvent = colorChangeEvent;
+            _brushSizeEvent = brushSizeEvent;
+            _saveLoadEvent = saveLoadEvent;
+            _saveLoadService = saveLoadService;
 
-                _texture.filterMode = FilterMode.Point;
-                _texture.Apply();
+            _saveLoadEvent.OnSave += SaveTexture;
+            _saveLoadEvent.OnLoad += LoadTexture;
+            _colorChangeEvent.OnColorChange += ChangeColor;
+            _brushSizeEvent.OnBrushSizeChanged += ChangeBrushSize;
+        }
+
+        private void Awake()
+        {
+            _camera = Camera.main;
+            InitializeTexture();
+        }
+
+        private void Update()
+        {
+            HandlePainting();
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                _saveLoadService.LoadTexture(_texture);
             }
         }
-    }
 
-    private void HandleTextureSave()
-    {
-        if (Input.GetKeyDown(KeyCode.S))
+        private void HandlePainting()
         {
-            SaveTexture();
-            Debug.Log($"Texture saved to {_savePath}");
-        }
-    }
-
-    private bool TryGetUVCoordinates(out int pixelX, out int pixelY)
-    {
-        pixelX = pixelY = 0;
-        Ray ray = _camera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit))
-        {
-            Vector2 uv = hit.textureCoord;
-            pixelX = Mathf.FloorToInt(uv.x * _texture.width);
-            pixelY = Mathf.FloorToInt(uv.y * _texture.height);
-            return true;
-        }
-
-        return false;
-    }
-
-    private void DrawCircle(int centerX, int centerY)
-    {
-        int radius = _brushSize / 2;
-        float radiusSquared = radius * radius;
-
-        for (int y = -radius; y < radius; y++)
-        {
-            for (int x = -radius; x < radius; x++)
+            Vector2 pointerPosition = _inputService.GetPointerPosition;
+        
+            if (pointerPosition != Vector2.zero && Input.GetMouseButton(0))
             {
-                if (x * x + y * y < radiusSquared)
+                if (TryGetUVCoordinates(pointerPosition, out int pixelX, out int pixelY))
                 {
-                    int pixelX = centerX + x;
-                    int pixelY = centerY + y;
-
-                    if (IsWithinTextureBounds(pixelX, pixelY))
+                    if (_lastRayX != pixelX || _lastRayY != pixelY)
                     {
-                        BlendPixel(pixelX, pixelY, _brushColor);
+                        DrawCircle(pixelX, pixelY);
+                        _lastRayX = pixelX;
+                        _lastRayY = pixelY;
+                    }
+                    _texture.Apply();
+                }
+            }
+        }
+
+
+        private bool TryGetUVCoordinates(Vector2 pointerPosition, out int pixelX, out int pixelY)
+        {
+            pixelX = pixelY = 0;
+            Ray ray = _camera.ScreenPointToRay(pointerPosition);
+            if (Physics.Raycast(ray, out RaycastHit hit))
+            {
+                Vector2 uv = hit.textureCoord;
+                pixelX = Mathf.FloorToInt(uv.x * _texture.width);
+                pixelY = Mathf.FloorToInt(uv.y * _texture.height);
+                return true;
+            }
+            return false;
+        }
+
+        private void DrawCircle(int centerX, int centerY)
+        {
+            int radius = _brushSize / 2;
+            float radiusSquared = radius * radius;
+
+            for (int y = -radius; y < radius; y++)
+            {
+                for (int x = -radius; x < radius; x++)
+                {
+                    if (x * x + y * y < radiusSquared)
+                    {
+                        int pixelX = centerX + x;
+                        int pixelY = centerY + y;
+
+                        if (IsWithinTextureBounds(pixelX, pixelY))
+                        {
+                            BlendPixel(pixelX, pixelY, _brushColor);
+                        }
                     }
                 }
             }
         }
-    }
 
-    private void BlendPixel(int x, int y, Color color)
-    {
-        Color existingColor = _texture.GetPixel(x, y);
-        Color blendedColor = Color.Lerp(existingColor, color, color.a);
-        _texture.SetPixel(x, y, blendedColor);
-    }
-
-    private bool IsWithinTextureBounds(int x, int y)
-    {
-        return x >= 0 && x < _texture.width && y >= 0 && y < _texture.height;
-    }
-
-    private void InitializeTexture()
-    {
-        _texture = new Texture2D(_textureSize, _textureSize);
-        Color initialColor = new Color(188f / 255f, 188f / 255f, 188f / 255f);
-
-        for (int y = 0; y < _texture.height; y++)
+        private void BlendPixel(int x, int y, Color color)
         {
-            for (int x = 0; x < _texture.width; x++)
-            {
-                _texture.SetPixel(x, y, initialColor);
-            }
+            Color existingColor = _texture.GetPixel(x, y);
+            Color blendedColor = Color.Lerp(existingColor, color, color.a);
+            _texture.SetPixel(x, y, blendedColor);
         }
 
-        _texture.Apply();
-        _meshRenderer.material.mainTexture = _texture;
-    }
-
-    private void SaveTexture()
-    {
-        List<ColorData> colorDataList = new List<ColorData>();
-
-        for (int y = 0; y < _texture.height; y++)
+        private void InitializeTexture()
         {
-            for (int x = 0; x < _texture.width; x++)
+            _texture = new Texture2D(_textureSize, _textureSize);
+            Color initialColor = new Color(188f / 255f, 188f / 255f, 188f / 255f);
+
+            for (int y = 0; y < _texture.height; y++)
             {
-                Color pixelColor = _texture.GetPixel(x, y);
-                colorDataList.Add(new ColorData(x, y, pixelColor));
+                for (int x = 0; x < _texture.width; x++)
+                {
+                    _texture.SetPixel(x, y, initialColor);
+                }
             }
+
+            _texture.filterMode = FilterMode.Point;
+            _texture.Apply();
+            meshRenderer.material.mainTexture = _texture;
         }
 
-        string json = JsonUtility.ToJson(new TextureData(_texture.width, _texture.height, colorDataList), true);
-        File.WriteAllText(_savePath, json);
+        private void LoadTexture() => _saveLoadService.LoadTexture(_texture);
+        private void SaveTexture() => _saveLoadService.SaveTexture(_texture);
+        private bool IsWithinTextureBounds(int x, int y) => x >= 0 && x < _texture.width && y >= 0 && y < _texture.height;
+        private void ChangeBrushSize(int obj) => _brushSize = obj;
+        private void ChangeColor(Color color) => _brushColor = color;
     }
 }

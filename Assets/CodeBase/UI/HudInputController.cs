@@ -46,6 +46,11 @@ namespace CodeBase.UI
             BindSaveLoadButton();
         }
 
+        private void OnDestroy()
+        {
+            UnbindAllButton();
+        }
+
         private void BindSaveLoadButton()
         {
             load.onClick.AddListener(() => _saveLoadController.Load());
@@ -65,6 +70,19 @@ namespace CodeBase.UI
             colorGreen.onClick.AddListener(() => _colorController.SetColor(Color.green));
             colorBlue.onClick.AddListener(() => _colorController.SetColor(Color.blue));
             eraser.onClick.AddListener(() => _colorController.SetColor(_eraserColor));
+        }
+
+        private void UnbindAllButton()
+        {
+            load.onClick.RemoveAllListeners();
+            save.onClick.RemoveAllListeners();
+            eight.onClick.RemoveAllListeners();
+            sixteen.onClick.RemoveAllListeners();
+            thirtyTwo.onClick.RemoveAllListeners();
+            colorRed.onClick.RemoveAllListeners();
+            colorGreen.onClick.RemoveAllListeners();
+            colorBlue.onClick.RemoveAllListeners();
+            eraser.onClick.RemoveAllListeners();
         }
     }
 }

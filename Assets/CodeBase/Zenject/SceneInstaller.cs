@@ -1,3 +1,4 @@
+using CodeBase.Brush;
 using CodeBase.Controllers.BrushSizeSystem;
 using CodeBase.Controllers.ColorSystem;
 using CodeBase.Infrastructure;

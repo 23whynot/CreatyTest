@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CodeBase.Object
+namespace CodeBase.Brush
 {
     public class PaintBrush : IPaintBrush
     {
